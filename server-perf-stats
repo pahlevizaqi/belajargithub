@@ -1,0 +1,72 @@
+#!/bin/bash
+
+echo "===== SERVER STATS REPORT ====="
+echo "Generated on: $(date)"
+echo
+
+# Stretch: OS version
+echo ">> OS Version:"
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    echo "$PRETTY_NAME"
+else
+    uname -a
+fi
+echo
+
+# Stretch: Uptime
+echo ">> Uptime:"
+uptime -p
+echo
+
+# Stretch: Load Average
+echo ">> Load Average (1m, 5m, 15m):"
+uptime | awk -F'load average:' '{ print $2 }'
+echo
+
+# Stretch: Logged-in Users
+echo ">> Logged in users:"
+who
+echo
+
+# Stretch: Failed login attempts (last 24h)
+echo ">> Failed login attempts (last 24h):"
+journalctl _COMM=sshd --since "24 hours ago" | grep "Failed password" | wc -l
+echo
+
+# CPU Usage
+echo ">> CPU Usage:"
+CPU_IDLE=$(top -bn1 | grep "Cpu(s)" | awk '{print $8}')
+CPU_USAGE=$(echo "scale=2; 100 - $CPU_IDLE" | bc)
+echo "Total CPU Usage: $CPU_USAGE%"
+echo
+
+# Memory Usage
+echo ">> Memory Usage:"
+MEM_TOTAL=$(free -m | awk '/^Mem:/ {print $2}')
+MEM_USED=$(free -m | awk '/^Mem:/ {print $3}')
+MEM_FREE=$(free -m | awk '/^Mem:/ {print $4}')
+MEM_PERCENT=$(echo "scale=2; $MEM_USED / $MEM_TOTAL * 100" | bc)
+echo "Total Memory: ${MEM_TOTAL}MB"
+echo "Used Memory: ${MEM_USED}MB"
+echo "Free Memory: ${MEM_FREE}MB"
+echo "Memory Usage: $MEM_PERCENT%"
+echo
+
+# Disk Usage
+echo ">> Disk Usage (Root partition):"
+DISK_USAGE=$(df -h / | awk 'NR==2 {print}')
+echo "$DISK_USAGE"
+echo
+
+# Top 5 Processes by CPU usage
+echo ">> Top 5 Processes by CPU Usage:"
+ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%cpu | head -n 6
+echo
+
+# Top 5 Processes by Memory usage
+echo ">> Top 5 Processes by Memory Usage:"
+ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%mem | head -n 6
+echo
+
+echo "===== END OF REPORT ====="
